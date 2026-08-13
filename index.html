@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Buku Induk Perpustakaan Digital</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- HTML5-QRCode Barcode Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .table-container { max-height: calc(100vh - 280px); }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        #reader video { border-radius: 0.5rem; width: 100% !important; object-fit: cover; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- Header Navbar -->
+    <header class="bg-gradient-to-r from-brand-900 via-brand-800 to-indigo-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20">
+                    <i class="fa-solid me-1 fa-book-bookmark text-2xl text-indigo-200"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl tracking-tight leading-tight">BUKU INDUK PERPUSTAKAAN</h1>
+                    <p class="text-xs text-indigo-200 font-medium">Auto ISBN Scanning & Intelligent Cataloging System</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button onclick="openScannerModal()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-barcode text-base"></i>
+                    <span>Scan ISBN</span>
+                </button>
+                <button onclick="openBookModal()" class="bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus text-base"></i>
+                    <span>Tambah Manual</span>
+                </button>
+                <button onclick="openGuideModal()" class="bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-medium px-3 py-2 rounded-lg transition backdrop-blur-sm border border-white/10 flex items-center gap-1.5" title="Petunjuk & Integrasi">
+                    <i class="fa-solid fa-circle-question text-base text-amber-300"></i>
+                    <span class="hidden md:inline">Petunjuk Pemasangan</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        <!-- Summary Stats Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-brand-50 text-brand-600 rounded-lg">
+                    <i class="fa-solid fa-books text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Judul</p>
+                    <p class="text-xl font-bold text-slate-800" id="statTotalJudul">0</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <i class="fa-solid fa-layer-group text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Eksemplar</p>
+                    <p class="text-xl font-bold text-slate-800" id="statTotalEksemplar">0</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <i class="fa-solid fa-hashtag text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">No. Induk Terakhir</p>
+                    <p class="text-xl font-bold text-slate-800" id="statLastNoInduk">1998</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                    <i class="fa-solid fa-graduation-cap text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Fakultas Aktif</p>
+                    <p class="text-xl font-bold text-slate-800" id="statTotalFakultas">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter and Search Bar -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex flex-1 flex-col sm:flex-row gap-3 w-full">
+                <!-- Search Box -->
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" oninput="renderTable()" placeholder="Cari ISBN, Judul, Pengarang, Penerbit, No. Induk..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                </div>
+                <!-- Faculty Filter -->
+                <div class="w-full sm:w-64">
+                    <select id="facultyFilter" onchange="renderTable()" class="w-full py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                        <option value="">Semua Fakultas/Prodi</option>
+                        <!-- Options generated via JS -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- Action Buttons (Sync, Export, Reset) -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                <button onclick="fetchFromSpreadsheet()" class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border border-indigo-200" title="Muat Data Terbaru dari Google Sheets">
+                    <i class="fa-solid fa-cloud-arrow-down text-indigo-600" id="loadIcon"></i>
+                    <span>Tarik dari Sheet</span>
+                </button>
+                <button onclick="syncWithSpreadsheet()" class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border border-emerald-200" title="Sinkronkan dengan Google Sheets">
+                    <i class="fa-solid fa-cloud-arrow-up text-emerald-600" id="syncIcon"></i>
+                    <span>Simpan ke Sheet</span>
+                </button>
+                <button onclick="exportToCSV()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border border-slate-300" title="Download Excel/CSV">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span>Export CSV</span>
+                </button>
+                <button onclick="confirmResetData()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border border-rose-200" title="Bersihkan Semua Data">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto table-container">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-800 text-slate-100 uppercase tracking-wider font-semibold sticky top-0 z-10 select-none">
+                            <th class="p-3 text-center w-12">No</th>
+                            <th class="p-3">Tanggal & Tgl Terima</th>
+                            <th class="p-3 text-center">No. Induk</th>
+                            <th class="p-3">ISBN</th>
+                            <th class="p-3 min-w-[180px]">Judul Buku</th>
+                            <th class="p-3">Pengarang & Penerbit</th>
+                            <th class="p-3">Tempat / Thn / Ed</th>
+                            <th class="p-3 text-center">DDC / Eks</th>
+                            <th class="p-3">Asal & Ket</th>
+                            <th class="p-3">Bahasa & Harga</th>
+                            <th class="p-3 min-w-[140px]">Fakultas / Prodi</th>
+                            <th class="p-3 text-center sticky right-0 bg-slate-800 z-20 w-24">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookTableBody" class="divide-y divide-slate-200 bg-white">
+                        <!-- Data rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State / Pagination Info Footer -->
+            <div id="emptyState" class="p-12 text-center text-slate-400 hidden">
+                <i class="fa-solid fa-book-open-reader text-5xl mb-3 text-slate-300"></i>
+                <p class="text-base font-semibold text-slate-600">Belum Ada Data Buku Induk</p>
+                <p class="text-xs text-slate-400 mt-1">Klik tombol <span class="font-bold text-emerald-600">Scan ISBN</span> atau <span class="font-bold text-brand-600">Tambah Manual</span> untuk menginput data buku.</p>
+            </div>
+
+            <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-2">
+                <div>
+                    Menampilkan <span id="displayedCount" class="font-semibold text-slate-700">0</span> dari <span id="totalCount" class="font-semibold text-slate-700">0</span> total catatan eksemplar.
+                </div>
+                <div class="flex items-center space-x-1" id="paginationControls">
+                    <!-- Dynamic pagination -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL: ISBN Camera Scanner -->
+    <div id="scannerModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+            <div class="bg-slate-800 text-white px-5 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-barcode text-emerald-400 text-lg"></i>
+                    <h3 class="font-bold text-base">Scan Barcode ISBN</h3>
+                </div>
+                <button onclick="closeScannerModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <!-- Camera viewport -->
+                <div class="relative bg-slate-950 rounded-xl overflow-hidden border-2 border-dashed border-slate-700 flex flex-col items-center justify-center min-h-[240px]">
+                    <div id="reader" class="w-full"></div>
+                    <div id="scannerPlaceholder" class="text-center p-6 space-y-2">
+                        <i class="fa-solid fa-camera text-3xl text-slate-500 animate-pulse"></i>
+                        <p class="text-xs text-slate-400">Izinkan akses kamera & dekatkan barcode ISBN buku ke lingkaran merah</p>
+                    </div>
+                </div>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-3 text-slate-400 text-xs uppercase font-medium">atau ketik manual</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <!-- Manual ISBN fallback input -->
+                <div class="flex gap-2">
+                    <input type="text" id="manualIsbnInput" placeholder="Masukkan ISBN (cth: 9786020385915)" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    <button onclick="processIsbnFromInput()" class="bg-brand-600 hover:bg-brand-700 text-white font-semibold px-4 py-2 rounded-lg text-xs transition flex items-center gap-1">
+                        <i class="fa-solid fa-magnifying-glass"></i> Cari AI
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 text-right">
+                <button onclick="closeScannerModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-semibold transition">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Add / Edit Book Form -->
+    <div id="bookModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full my-8 overflow-hidden flex flex-col">
+            <div class="bg-gradient-to-r from-brand-900 to-indigo-900 text-white px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-book text-amber-300 text-lg"></i>
+                    <h3 class="font-bold text-base" id="modalTitle">Form Input Buku Induk</h3>
+                </div>
+                <button onclick="closeBookModal()" class="text-white/70 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Loading overlay during Gemini AI auto-fetch -->
+            <div id="aiLoadingOverlay" class="hidden absolute inset-0 bg-indigo-950/90 backdrop-blur-xs p-8 text-white flex flex-col items-center justify-center space-y-3 z-30 rounded-2xl">
+                <div class="w-10 h-10 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                <p class="font-semibold text-sm" id="aiLoadingStatusText">Menghubungkan ke AI & Katalog Buku...</p>
+                <p class="text-xs text-indigo-200 text-center max-w-md">Proses pencarian cepat sedang berjalan...</p>
+            </div>
+
+            <form id="bookForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 text-xs relative">
+                <input type="hidden" id="editIndex" value="-1">
+
+                <!-- Row 1: Nomor Induk, Tanggal, Tanggal Terima -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Nomor Induk <span class="text-rose-500">*</span></label>
+                        <input type="number" id="inputNoInduk" required class="w-full p-2 bg-slate-100 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 font-bold text-slate-800">
+                        <span class="text-[10px] text-slate-400">Otomatis berurut dari 1999</span>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tanggal Input <span class="text-rose-500">*</span></label>
+                        <input type="date" id="inputTanggal" required class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tanggal Terima <span class="text-rose-500">*</span></label>
+                        <input type="date" id="inputTanggalTerima" required class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Row 2: ISBN & Lookup Button -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="sm:col-span-2">
+                        <label class="block font-semibold text-slate-700 mb-1">Nomor ISBN <span class="text-rose-500">*</span></label>
+                        <div class="relative">
+                            <input type="text" id="inputIsbn" placeholder="978-xxx-xxx-xxx-x" required class="w-full p-2 pr-10 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-brand-500">
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" onclick="fetchBookInfoFromAI()" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-semibold p-2 rounded-lg transition flex items-center justify-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                            <span>Auto Auto-Fill AI</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Row 3: Judul Buku & Pengarang -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Judul Buku <span class="text-rose-500">*</span></label>
+                        <input type="text" id="inputJudul" required placeholder="Judul Lengkap Buku" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Pengarang / Penulis <span class="text-rose-500">*</span></label>
+                        <input type="text" id="inputPengarang" required placeholder="Nama Pengarang" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Row 4: Penerbit & Tempat Terbit -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Penerbit</label>
+                        <input type="text" id="inputPenerbit" placeholder="Nama Penerbit" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tempat Terbit</label>
+                        <input type="text" id="inputTempatTerbit" placeholder="Kota Terbit (cth: Jakarta)" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Row 5: Edisi, Cetakan/Tahun, Klasifikasi -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Edisi</label>
+                        <input type="text" id="inputEdisi" placeholder="Edisi ke-1" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Cetakan / Tahun</label>
+                        <input type="text" id="inputCetakanTahun" placeholder="Cet. 1, 2023" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Klasifikasi (DDC)</label>
+                        <input type="text" id="inputKlasifikasi" placeholder="340 / 658.01" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Row 6: Banyak Buku (C), Asal Buku, Keterangan -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+                    <div>
+                        <label class="block font-semibold text-indigo-950 mb-1">Banyak Buku (Jumlah Eks)</label>
+                        <input type="number" id="inputBanyakBuku" min="1" max="100" value="1" onchange="updateCopyPreview()" class="w-full p-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-brand-500 font-bold">
+                        <span id="copyPreviewText" class="text-[10px] text-brand-700 font-semibold mt-1 block">(C1)</span>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-indigo-950 mb-1">Asal Buku</label>
+                        <select id="inputAsalBuku" class="w-full p-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-brand-500">
+                            <option value="Pembelian">Pembelian</option>
+                            <option value="Hibah / Hadiah">Hibah / Hadiah</option>
+                            <option value="Dropping / Bantuan">Dropping / Bantuan</option>
+                            <option value="Sumbangan Alumni">Sumbangan Alumni</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-indigo-950 mb-1">Keterangan (Dari)</label>
+                        <input type="text" id="inputKeterangan" placeholder="cth: Anggaran 2024 / Kemdikbud" class="w-full p-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Row 7: Bahasa, Harga Satuan, Fakultas -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Bahasa</label>
+                        <input type="text" id="inputBahasa" value="Indonesia" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Harga Satuan (Rp)</label>
+                        <input type="number" id="inputHargaSatuan" placeholder="75000" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Fakultas / Program Studi <span class="text-rose-500">*</span></label>
+                        <select id="inputFakultas" required class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 font-medium">
+                            <!-- Options injected dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 flex justify-end gap-2">
+                    <button type="button" onclick="closeBookModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition">Batal</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition shadow-md flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span id="btnSaveText">Simpan Ke Buku Induk</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Guide & Google Sheet Integration Instructions -->
+    <div id="guideModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-gear text-amber-400 text-lg"></i>
+                    <h3 class="font-bold text-base">Petunjuk Pemasangan & Hubungkan Google Spreadsheet</h3>
+                </div>
+                <button onclick="closeGuideModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 overflow-y-auto text-xs text-slate-700 leading-relaxed">
+                <!-- Section A: Google Spreadsheet Config -->
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-3">
+                    <h4 class="font-bold text-sm text-amber-900 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-emerald-600"></i>
+                        1. Pengaturan Webhook Google Apps Script (Spreadsheet Sync)
+                    </h4>
+                    <p>Masukkan Web App URL dari Google Apps Script untuk menghubungkan aplikasi ini secara langsung ke Google Sheets Anda:</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" class="flex-1 p-2 bg-white border border-amber-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-brand-500">
+                        <button onclick="saveScriptUrl()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition">
+                            Simpan URL
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section B: Step-by-step Apps Script Tutorial -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-sm text-slate-900 border-b pb-1">Cara Menghubungkan ke Google Spreadsheet:</h4>
+                    <ol class="list-decimal list-inside space-y-2 text-slate-600">
+                        <li>Buka Google Sheets baru di akun Google Anda, beri nama <strong>"Buku Induk Perpustakaan"</strong>.</li>
+                        <li>Klik menu <strong>Ekstensi</strong> &rarr; <strong>Apps Script</strong>.</li>
+                        <li>Hapus semua kode lama, lalu salin dan tempel (Paste) kode Apps Script di bawah ini:</li>
+                    </ol>
+
+                    <div class="relative bg-slate-900 text-slate-200 p-3 rounded-xl font-mono text-[11px] overflow-x-auto">
+                        <button onclick="copyAppsScriptCode()" class="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-xs px-2.5 py-1 rounded text-white flex items-center gap-1 transition">
+                            <i class="fa-regular fa-copy"></i> Salin Kode
+                        </button>
+<pre id="scriptCodeSnippet">
+// KODE GOOGLE APPS SCRIPT UNTUK BUKU INDUK PERPUSTAKAAN
+function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var rows = sheet.getDataRange().getValues();
+  
+  if (rows.length <= 1) {
+    return ContentService.createTextOutput(JSON.stringify({status: "success", books: []}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  var books = [];
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    books.push({
+      tanggal: r[1] ? String(r[1]) : "",
+      noInduk: r[2] || "",
+      judul: r[3] || "",
+      pengarang: r[4] || "",
+      penerbit: r[5] || "",
+      tempatTerbit: r[6] || "",
+      edisi: r[7] || "",
+      cetakanTahun: r[8] || "",
+      klasifikasi: r[9] || "",
+      banyakBuku: r[10] || "(C1)",
+      asalBuku: r[11] || "",
+      keterangan: r[12] || "",
+      bahasa: r[13] || "",
+      hargaSatuan: r[14] || 0,
+      tanggalTerima: r[15] ? String(r[15]) : "",
+      isbn: r[16] ? String(r[16]) : "",
+      fakultas: r[17] || ""
+    });
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({status: "success", books: books}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  
+  if (data.action === "syncAll") {
+    sheet.clear();
+    sheet.appendRow([
+      "No", "Tanggal", "Nomor Induk", "Judul Buku", "Pengarang", "Penerbit",
+      "Tempat Terbit", "Edisi", "Cetakan/Tahun", "Klasifikasi", "Banyak Buku",
+      "Asal Buku", "Keterangan", "Bahasa", "Harga Satuan", "Tanggal Terima", "ISBN", "Fakultas"
+    ]);
+    
+    data.books.forEach(function(b, idx) {
+      sheet.appendRow([
+        idx + 1, b.tanggal, b.noInduk, b.judul, b.pengarang, b.penerbit,
+        b.tempatTerbit, b.edisi, b.cetakanTahun, b.klasifikasi, b.banyakBuku,
+        b.asalBuku, b.keterangan, b.bahasa, b.hargaSatuan, b.tanggalTerima, b.isbn, b.fakultas
+      ]);
+    });
+    return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+</pre>
+                    </div>
+
+                    <ol start="4" class="list-decimal list-inside space-y-2 text-slate-600">
+                        <li>Klik tombol <strong>Apply / Deploy</strong> &rarr; <strong>New Deployment</strong>.</li>
+                        <li>Pilih type <strong>Web App</strong>. Set "Execute as": <i>Me</i>, dan "Who has access": <i>Anyone (Siapa Saja)</i>.</li>
+                        <li>Klik <strong>Deploy</strong>, lalu salin Web App URL dan tempelkan ke kolom URL di atas.</li>
+                    </ol>
+                </div>
+
+                <!-- Section C: Features breakdown -->
+                <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 space-y-2">
+                    <h4 class="font-bold text-sm text-indigo-900">Catatan Fitur Otomatisasi:</h4>
+                    <ul class="list-disc list-inside space-y-1 text-indigo-800">
+                        <li><strong>No Induk:</strong> Dimulai dari <strong>1999</strong> secara acuan standar perpustakaan, otomatis bertambah 2000, 2001, dst. setiap ada data baru.</li>
+                        <li><strong>Pencarian AI ISBN:</strong> Menggunakan Gemini AI dengan pencarian terhubung (Search Grounding) ke Perpusnas RI, katalog INLISLite, Google Books, dan repositori perpustakaan universitas seluruh Indonesia.</li>
+                        <li><strong>Multiple Eksemplar (C1..C7):</strong> Jika memasukkan Banyak Buku = 7, sistem secara otomatis menyimpan 7 entri eksemplar terpisah dengan penulisan format (C1, C2, C3, ..., C7) dan Nomor Induk berurutan.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 text-right">
+                <button onclick="closeGuideModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-lg transition">Tutup Petunjuk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP JAVASCRIPT LOGIC -->
+    <script>
+        const FAKULTAS_LIST = [
+            "(S1)Ilmu Hukum",
+            "(S1)Hukum Bisnis",
+            "(S1)Manajemen",
+            "(S1)Bisnis Digital",
+            "(S1)Kewirausahaan",
+            "(S1)Administrasi Publik",
+            "(S1)Sastra Inggris",
+            "(S1)Pendidikan Guru Sekolah Dasar",
+            "(S1)Agribisnis",
+            "(S1)Teknik Kelautan",
+            "(S1)Biologi",
+            "(S1)Matematika",
+            "(S2)Administrasi Publik",
+            "(S2)Manajemen"
+        ];
+
+        let booksData = [];
+        let html5QrCode = null;
+        let currentPage = 1;
+        const itemsPerPage = 15;
+        const BASE_NO_INDUK = 1999;
+
+        function populateFacultyDropdowns() {
+            const filterSelect = document.getElementById('facultyFilter');
+            const inputSelect = document.getElementById('inputFakultas');
+
+            if (filterSelect) {
+                filterSelect.innerHTML = '<option value="">Semua Fakultas/Prodi</option>';
+                FAKULTAS_LIST.forEach(fac => {
+                    const opt = document.createElement('option');
+                    opt.value = fac;
+                    opt.textContent = fac;
+                    filterSelect.appendChild(opt);
+                });
+            }
+
+            if (inputSelect) {
+                inputSelect.innerHTML = '<option value="">-- Pilih Fakultas / Program Studi --</option>';
+                FAKULTAS_LIST.forEach(fac => {
+                    const opt = document.createElement('option');
+                    opt.value = fac;
+                    opt.textContent = fac;
+                    inputSelect.appendChild(opt);
+                });
+            }
+        }
+
+        function loadLocalData() {
+            const data = localStorage.getItem('buku_induk_data');
+            if (data) {
+                try {
+                    booksData = JSON.parse(data);
+                } catch (e) {
+                    console.error("Error parsing local data", e);
+                    booksData = [];
+                }
+            } else {
+                booksData = [];
+            }
+        }
+
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const tglElem = document.getElementById('inputTanggal');
+            const tglTerimaElem = document.getElementById('inputTanggalTerima');
+            if (tglElem && !tglElem.value) tglElem.value = today;
+            if (tglTerimaElem && !tglTerimaElem.value) tglTerimaElem.value = today;
+        }
+
+        window.onload = function() {
+            populateFacultyDropdowns();
+            loadLocalData();
+            setDefaultDates();
+            
+            // Check query parameter or saved URL for automatic Cloud Sync on startup
+            const urlParams = new URLSearchParams(window.location.search);
+            const scriptUrlParam = urlParams.get('scriptUrl');
+            if (scriptUrlParam) {
+                localStorage.setItem('google_script_url', scriptUrlParam);
+            }
+
+            if (localStorage.getItem('google_script_url')) {
+                fetchFromSpreadsheet(true);
+            } else {
+                renderTable();
+            }
+        };
+
+        async function fetchFromSpreadsheet(isSilent = false) {
+            const scriptUrl = localStorage.getItem('google_script_url');
+            if (!scriptUrl) {
+                if (!isSilent) openGuideModal();
+                return;
+            }
+
+            const loadIcon = document.getElementById('loadIcon');
+            if (loadIcon) loadIcon.classList.add('animate-spin');
+
+            try {
+                const response = await fetch(scriptUrl);
+                const result = await response.json();
+
+                if (result && result.status === "success" && Array.isArray(result.books)) {
+                    if (result.books.length > 0) {
+                        booksData = result.books;
+                        saveLocalData();
+                        renderTable();
+                        if (!isSilent) showToast(" Data berhasil ditarik dari Google Sheets!", "success");
+                    } else if (!isSilent) {
+                        showToast("Google Sheets masih kosong.", "warning");
+                    }
+                }
+            } catch (err) {
+                console.error("Fetch Cloud Error:", err);
+                if (!isSilent) showToast("Gagal menarik data dari Google Sheets.", "error");
+            } finally {
+                if (loadIcon) loadIcon.classList.remove('animate-spin');
+            }
+        }
+
+        function saveLocalData() {
+            localStorage.setItem('buku_induk_data', JSON.stringify(booksData));
+        }
+
+        function getNextNoInduk() {
+            if (booksData.length === 0) return BASE_NO_INDUK;
+            const maxNo = Math.max(...booksData.map(b => parseInt(b.noInduk) || BASE_NO_INDUK));
+            return maxNo + 1;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('bookTableBody');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+            const facultyVal = document.getElementById('facultyFilter').value;
+
+            // Filter Data
+            let filtered = booksData.filter(book => {
+                const matchSearch = !searchVal || 
+                    (book.judul && book.judul.toLowerCase().includes(searchVal)) ||
+                    (book.isbn && book.isbn.toLowerCase().includes(searchVal)) ||
+                    (book.pengarang && book.pengarang.toLowerCase().includes(searchVal)) ||
+                    (book.penerbit && book.penerbit.toLowerCase().includes(searchVal)) ||
+                    (book.noInduk && book.noInduk.toString().includes(searchVal));
+
+                const matchFaculty = !facultyVal || book.fakultas === facultyVal;
+                return matchSearch && matchFaculty;
+            });
+
+            // Update Metrics Stats
+            document.getElementById('statTotalJudul').innerText = new Set(booksData.map(b => b.isbn || b.judul)).size;
+            document.getElementById('statTotalEksemplar').innerText = booksData.length;
+            document.getElementById('statLastNoInduk').innerText = booksData.length > 0 ? Math.max(...booksData.map(b => parseInt(b.noInduk) || BASE_NO_INDUK)) : 1998;
+            document.getElementById('statTotalFakultas').innerText = new Set(booksData.map(b => b.fakultas).filter(Boolean)).size;
+
+            // Pagination calculations
+            const totalItems = filtered.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+            document.getElementById('displayedCount').innerText = paginatedData.length;
+            document.getElementById('totalCount').innerText = totalItems;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                document.getElementById('emptyState').classList.remove('hidden');
+                renderPaginationControls(0, 1);
+                return;
+            } else {
+                document.getElementById('emptyState').classList.add('hidden');
+            }
+
+            // Generate Table Rows
+            let html = '';
+            paginatedData.forEach((book, idx) => {
+                const realIndex = booksData.indexOf(book);
+                const displayIndex = startIndex + idx + 1;
+
+                html += `
+                <tr class="hover:bg-slate-50/80 transition group">
+                    <td class="p-3 text-center font-medium text-slate-500">${displayIndex}</td>
+                    <td class="p-3 whitespace-nowrap">
+                        <div class="font-semibold text-slate-800">${book.tanggal || '-'}</div>
+                        <div class="text-[10px] text-slate-400">Tgl Trm: ${book.tanggalTerima || '-'}</div>
+                    </td>
+                    <td class="p-3 text-center">
+                        <span class="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded font-bold border border-indigo-100">${book.noInduk}</span>
+                    </td>
+                    <td class="p-3 font-mono font-medium text-slate-700 whitespace-nowrap">${book.isbn || '-'}</td>
+                    <td class="p-3">
+                        <div class="font-bold text-slate-900 group-hover:text-brand-600 transition">${book.judul}</div>
+                    </td>
+                    <td class="p-3">
+                        <div class="font-medium text-slate-800">${book.pengarang || '-'}</div>
+                        <div class="text-[11px] text-slate-500">${book.penerbit || '-'}</div>
+                    </td>
+                    <td class="p-3 whitespace-nowrap text-slate-600">
+                        <div>${book.tempatTerbit || '-'}</div>
+                        <div class="text-[10px] text-slate-400">${book.cetakanTahun || '-'} | ${book.edisi || '-'}</div>
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <div class="font-semibold text-slate-700">${book.klasifikasi || '-'}</div>
+                        <span class="inline-block px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">${book.banyakBuku || '(C1)'}</span>
+                    </td>
+                    <td class="p-3 text-slate-600 whitespace-nowrap">
+                        <div class="font-medium">${book.asalBuku || '-'}</div>
+                        <div class="text-[10px] text-slate-400">${book.keterangan || '-'}</div>
+                    </td>
+                    <td class="p-3 whitespace-nowrap">
+                        <div class="text-slate-700">${book.bahasa || '-'}</div>
+                        <div class="font-semibold text-slate-900">Rp ${Number(book.hargaSatuan || 0).toLocaleString('id-ID')}</div>
+                    </td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 bg-slate-100 text-slate-700 rounded text-[10px] font-semibold inline-block">${book.fakultas || '-'}</span>
+                    </td>
+                    <td class="p-3 text-center sticky right-0 bg-white group-hover:bg-slate-50 transition border-l border-slate-100">
+                        <div class="flex items-center justify-center space-x-1">
+                            <button onclick="editBook(${realIndex})" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition" title="Edit Data">
+                                <i class="fa-solid fa-pen-to-square text-sm"></i>
+                            </button>
+                            <button onclick="deleteBook(${realIndex})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded transition" title="Hapus Data">
+                                <i class="fa-solid fa-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            renderPaginationControls(totalItems, totalPages);
+        }
+
+        function renderPaginationControls(totalItems, totalPages) {
+            const container = document.getElementById('paginationControls');
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = `
+                <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled class="px-2 py-1 bg-slate-100 text-slate-400 rounded cursor-not-allowed"' : 'class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded"'}>
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                </button>
+                <span class="px-3 py-1 font-semibold text-slate-600">Hal ${currentPage} / ${totalPages}</span>
+                <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled class="px-2 py-1 bg-slate-100 text-slate-400 rounded cursor-not-allowed"' : 'class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded"'}>
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
+            `;
+            container.innerHTML = html;
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            renderTable();
+        }
+
+        function openScannerModal() {
+            document.getElementById('scannerModal').classList.remove('hidden');
+            document.getElementById('scannerPlaceholder').classList.remove('hidden');
+
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            const config = { fps: 10, qrbox: { width: 260, height: 160 } };
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess,
+                onScanFailure
+            ).catch(err => {
+                console.warn("Camera start error:", err);
+            });
+        }
+
+        function closeScannerModal() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scannerModal').classList.add('hidden');
+                }).catch(err => {
+                    document.getElementById('scannerModal').classList.add('hidden');
+                });
+            } else {
+                document.getElementById('scannerModal').classList.add('hidden');
+            }
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // Clean ISBN barcode
+            let cleanIsbn = decodedText.replace(/[^0-9X]/gi, '');
+            if (cleanIsbn.length >= 10) {
+                closeScannerModal();
+                openBookModal(cleanIsbn);
+                fetchBookInfoFromAI(cleanIsbn);
+            }
+        }
+
+        function onScanFailure(error) {
+            // Silent fallback scanning
+        }
+
+        function processIsbnFromInput() {
+            const val = document.getElementById('manualIsbnInput').value.trim();
+            if (val) {
+                closeScannerModal();
+                openBookModal(val);
+                fetchBookInfoFromAI(val);
+            }
+        }
+
+        async function fetchBookInfoFromAI(targetIsbn) {
+            const isbn = targetIsbn || document.getElementById('inputIsbn').value.trim();
+            if (!isbn) {
+                showToast("Silakan masukkan atau scan nomor ISBN terlebih dahulu.", "error");
+                return;
+            }
+
+            const overlay = document.getElementById('aiLoadingOverlay');
+            const statusText = document.getElementById('aiLoadingStatusText');
+            overlay.classList.remove('hidden');
+            if (statusText) statusText.innerText = "Menghubungkan ke AI & Katalog Buku...";
+
+            const systemPrompt = `Anda adalah pustakawan cepat. Berikan metadata buku berdasarkan ISBN: "${isbn}".
+Kembalikan JSON valid murni tanpa markdown lain:
+{
+  "judul": "...",
+  "pengarang": "...",
+  "penerbit": "...",
+  "tempatTerbit": "...",
+  "edisi": "...",
+  "cetakanTahun": "...",
+  "klasifikasi": "...",
+  "bahasa": "Indonesia",
+  "hargaSatuan": 75000,
+  "asalBuku": "Pembelian",
+  "keterangan": "Anggaran Perpustakaan"
+}`;
+
+            const userQuery = `Cari metadata untuk ISBN ${isbn}`;
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: { temperature: 0.1 }
+            };
+
+            try {
+                if (statusText) statusText.innerText = "Mencari & Menganalisis Data ISBN...";
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (textResponse) {
+                    if (statusText) statusText.innerText = "Data Ditemukan! Mengisi Form...";
+                    const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        const data = JSON.parse(jsonMatch[0]);
+                        
+                        if (data.judul) document.getElementById('inputJudul').value = data.judul;
+                        if (data.pengarang) document.getElementById('inputPengarang').value = data.pengarang;
+                        if (data.penerbit) document.getElementById('inputPenerbit').value = data.penerbit;
+                        if (data.tempatTerbit) document.getElementById('inputTempatTerbit').value = data.tempatTerbit;
+                        if (data.edisi) document.getElementById('inputEdisi').value = data.edisi;
+                        if (data.cetakanTahun) document.getElementById('inputCetakanTahun').value = data.cetakanTahun;
+                        if (data.klasifikasi) document.getElementById('inputKlasifikasi').value = data.klasifikasi;
+                        if (data.bahasa) document.getElementById('inputBahasa').value = data.bahasa;
+                        if (data.hargaSatuan) document.getElementById('inputHargaSatuan').value = data.hargaSatuan;
+                        if (data.asalBuku) document.getElementById('inputAsalBuku').value = data.asalBuku;
+                        if (data.keterangan) document.getElementById('inputKeterangan').value = data.keterangan;
+
+                        showToast("✨ Metadata buku berhasil di-autofill oleh AI!", "success");
+                    } else {
+                        showToast("⚠️ Format data tidak dikenali, silakan lengkapi manual.", "warning");
+                    }
+                } else {
+                    showToast("❌ Buku dengan ISBN tersebut tidak ditemukan.", "error");
+                }
+            } catch (error) {
+                console.error("Gemini Lookup Error:", error);
+                showToast("❌ Gagal terhubung ke AI. Silakan isi form secara manual.", "error");
+            } finally {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-emerald-600' : type === 'warning' ? 'bg-amber-600' : 'bg-rose-600';
+            toast.className = `${bgColor} text-white px-4 py-3 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 transform translate-y-2 opacity-0 transition-all duration-300 pointer-events-auto`;
+            
+            let icon = type === 'success' ? 'fa-circle-check' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-xmark';
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function openBookModal(isbn = '') {
+            document.getElementById('editIndex').value = "-1";
+            document.getElementById('modalTitle').innerText = "Form Input Buku Induk";
+            document.getElementById('btnSaveText').innerText = "Simpan Ke Buku Induk";
+            document.getElementById('bookForm').reset();
+            
+            setDefaultDates();
+            
+            // Set auto incrementing Nomor Induk starting from 1999
+            document.getElementById('inputNoInduk').value = getNextNoInduk();
+            
+            if (isbn) {
+                document.getElementById('inputIsbn').value = isbn;
+            }
+            
+            updateCopyPreview();
+            document.getElementById('bookModal').classList.remove('hidden');
+        }
+
+        function closeBookModal() {
+            document.getElementById('bookModal').classList.add('hidden');
+        }
+
+        function updateCopyPreview() {
+            const count = parseInt(document.getElementById('inputBanyakBuku').value) || 1;
+            const previewText = document.getElementById('copyPreviewText');
+            if (count <= 1) {
+                previewText.innerText = "(C1)";
+            } else {
+                let copies = [];
+                for (let i = 1; i <= Math.min(count, 5); i++) copies.push(`C${i}`);
+                if (count > 5) copies.push(`...C${count}`);
+                previewText.innerText = `(${copies.join(',')}) -> Akan membuat ${count} entri eksemplar terpisah.`;
+            }
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const editIdx = parseInt(document.getElementById('editIndex').value);
+            const count = parseInt(document.getElementById('inputBanyakBuku').value) || 1;
+            const baseNoInduk = parseInt(document.getElementById('inputNoInduk').value) || getNextNoInduk();
+
+            const commonData = {
+                tanggal: document.getElementById('inputTanggal').value,
+                isbn: document.getElementById('inputIsbn').value.trim(),
+                judul: document.getElementById('inputJudul').value.trim(),
+                pengarang: document.getElementById('inputPengarang').value.trim(),
+                penerbit: document.getElementById('inputPenerbit').value.trim(),
+                tempatTerbit: document.getElementById('inputTempatTerbit').value.trim(),
+                edisi: document.getElementById('inputEdisi').value.trim(),
+                cetakanTahun: document.getElementById('inputCetakanTahun').value.trim(),
+                klasifikasi: document.getElementById('inputKlasifikasi').value.trim(),
+                asalBuku: document.getElementById('inputAsalBuku').value,
+                keterangan: document.getElementById('inputKeterangan').value.trim(),
+                bahasa: document.getElementById('inputBahasa').value.trim(),
+                hargaSatuan: parseFloat(document.getElementById('inputHargaSatuan').value) || 0,
+                tanggalTerima: document.getElementById('inputTanggalTerima').value,
+                fakultas: document.getElementById('inputFakultas').value
+            };
+
+            if (editIdx >= 0) {
+                // Editing single entry
+                booksData[editIdx] = {
+                    ...commonData,
+                    noInduk: baseNoInduk,
+                    banyakBuku: document.getElementById('inputBanyakBuku').value.includes('C') ? 
+                        document.getElementById('inputBanyakBuku').value : `(C1)`
+                };
+            } else {
+                // Adding new entry (with smart copy expansion C1..Cn)
+                for (let i = 0; i < count; i++) {
+                    const newBook = {
+                        ...commonData,
+                        noInduk: baseNoInduk + i,
+                        banyakBuku: `(C${i + 1})`
+                    };
+                    booksData.push(newBook);
+                }
+            }
+
+            saveLocalData();
+            renderTable();
+            closeBookModal();
+            
+            // Auto sync to Google Sheets if configured
+            syncWithSpreadsheet(true);
+        }
+
+        function editBook(index) {
+            const book = booksData[index];
+            if (!book) return;
+
+            document.getElementById('editIndex').value = index;
+            document.getElementById('modalTitle').innerText = "Edit Data Buku Induk";
+            document.getElementById('btnSaveText').innerText = "Perbarui Data";
+
+            document.getElementById('inputTanggal').value = book.tanggal || '';
+            document.getElementById('inputNoInduk').value = book.noInduk || '';
+            document.getElementById('inputIsbn').value = book.isbn || '';
+            document.getElementById('inputJudul').value = book.judul || '';
+            document.getElementById('inputPengarang').value = book.pengarang || '';
+            document.getElementById('inputPenerbit').value = book.penerbit || '';
+            document.getElementById('inputTempatTerbit').value = book.tempatTerbit || '';
+            document.getElementById('inputEdisi').value = book.edisi || '';
+            document.getElementById('inputCetakanTahun').value = book.cetakanTahun || '';
+            document.getElementById('inputKlasifikasi').value = book.klasifikasi || '';
+            document.getElementById('inputBanyakBuku').value = 1; // set default 1 when editing single
+            document.getElementById('inputAsalBuku').value = book.asalBuku || 'Pembelian';
+            document.getElementById('inputKeterangan').value = book.keterangan || '';
+            document.getElementById('inputBahasa').value = book.bahasa || 'Indonesia';
+            document.getElementById('inputHargaSatuan').value = book.hargaSatuan || '';
+            document.getElementById('inputTanggalTerima').value = book.tanggalTerima || '';
+            document.getElementById('inputFakultas').value = book.fakultas || '';
+
+            updateCopyPreview();
+            document.getElementById('bookModal').classList.remove('hidden');
+        }
+
+        function deleteBook(index) {
+            const book = booksData[index];
+            if (confirm(`Apakah Anda yakin ingin menghapus buku "${book.judul}" (No. Induk: ${book.noInduk})?`)) {
+                booksData.splice(index, 1);
+                saveLocalData();
+                renderTable();
+                syncWithSpreadsheet(true);
+            }
+        }
+
+        function confirmResetData() {
+            if (confirm("Apakah Anda yakin ingin MENGHAPUS SEMUA data buku induk? Tindakan ini tidak dapat dibatalkan.")) {
+                booksData = [];
+                saveLocalData();
+                renderTable();
+            }
+        }
+
+        function openGuideModal() {
+            const url = localStorage.getItem('google_script_url') || '';
+            document.getElementById('scriptUrlInput').value = url;
+            document.getElementById('guideModal').classList.remove('hidden');
+        }
+
+        function closeGuideModal() {
+            document.getElementById('guideModal').classList.add('hidden');
+        }
+
+        function saveScriptUrl() {
+            const url = document.getElementById('scriptUrlInput').value.trim();
+            localStorage.setItem('google_script_url', url);
+            alert("URL Google Apps Script berhasil disimpan!");
+        }
+
+        async function syncWithSpreadsheet(isSilent = false) {
+            const scriptUrl = localStorage.getItem('google_script_url');
+            if (!scriptUrl) {
+                if (!isSilent) {
+                    alert("URL Google Apps Script belum diatur. Klik 'Petunjuk Pemasangan' untuk mengatur koneksi spreadsheet.");
+                    openGuideModal();
+                }
+                return;
+            }
+
+            const syncIcon = document.getElementById('syncIcon');
+            if (syncIcon) syncIcon.classList.add('animate-spin');
+
+            try {
+                await fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "syncAll", books: booksData })
+                });
+
+                if (!isSilent) {
+                    alert("Data berhasil dikirim & disinkronkan ke Google Spreadsheet!");
+                }
+            } catch (err) {
+                console.error("Sync error:", err);
+                if (!isSilent) alert("Gagal menyinkronkan data ke Google Spreadsheet.");
+            } finally {
+                if (syncIcon) syncIcon.classList.remove('animate-spin');
+            }
+        }
+
+        function exportToCSV() {
+            if (booksData.length === 0) {
+                alert("Tidak ada data untuk diexport.");
+                return;
+            }
+
+            const headers = [
+                "No", "Tanggal", "Nomor Induk", "Judul Buku", "Pengarang", "Penerbit",
+                "Tempat Terbit", "Edisi", "Cetakan/Tahun", "Klasifikasi", "Banyak Buku",
+                "Asal Buku", "Keterangan", "Bahasa", "Harga Satuan", "Tanggal Terima", "ISBN", "Fakultas"
+            ];
+
+            let csvRows = [];
+            csvRows.push(headers.join(";"));
+
+            booksData.forEach((b, idx) => {
+                const row = [
+                    idx + 1,
+                    `"${b.tanggal || ''}"`,
+                    `"${b.noInduk || ''}"`,
+                    `"${(b.judul || '').replace(/"/g, '""')}"`,
+                    `"${(b.pengarang || '').replace(/"/g, '""')}"`,
+                    `"${(b.penerbit || '').replace(/"/g, '""')}"`,
+                    `"${(b.tempatTerbit || '').replace(/"/g, '""')}"`,
+                    `"${b.edisi || ''}"`,
+                    `"${b.cetakanTahun || ''}"`,
+                    `"${b.klasifikasi || ''}"`,
+                    `"${b.banyakBuku || '(C1)'}"`,
+                    `"${b.asalBuku || ''}"`,
+                    `"${b.keterangan || ''}"`,
+                    `"${b.bahasa || ''}"`,
+                    b.hargaSatuan || 0,
+                    `"${b.tanggalTerima || ''}"`,
+                    `"'${b.isbn || ''}"`, // Escaped as string
+                    `"${b.fakultas || ''}"`
+                ];
+                csvRows.push(row.join(";"));
+            });
+
+            const csvContent = "\uFEFF" + csvRows.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Buku_Induk_Perpustakaan_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function copyAppsScriptCode() {
+            const code = document.getElementById('scriptCodeSnippet').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("Kode Apps Script berhasil disalin ke clipboard!");
+        }
+    </script>
+</body>
+</html>
